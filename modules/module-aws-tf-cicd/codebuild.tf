@@ -1,10 +1,11 @@
 # ── CodeBuild: Terraform Test Framework ───────────────────────
 
 resource "aws_codebuild_project" "tf_test" {
-  name          = "${var.project_name}-tf-test"
-  description   = "Runs Terraform Test Framework - unit, integration, e2e tests"
-  build_timeout = 30
-  service_role  = aws_iam_role.codebuild_role.arn
+  name           = "${var.project_name}-tf-test"
+  description    = "Runs Terraform Test Framework - unit, integration, e2e tests"
+  build_timeout  = 30
+  service_role   = aws_iam_role.codebuild_role.arn
+  encryption_key = aws_kms_key.cicd.arn
 
   artifacts {
     type = "CODEPIPELINE"
@@ -54,10 +55,11 @@ resource "aws_codebuild_project" "tf_test" {
 # ── CodeBuild: Checkov Security Scan ──────────────────────────
 
 resource "aws_codebuild_project" "checkov" {
-  name          = "${var.project_name}-checkov"
-  description   = "Runs Checkov static security analysis on Terraform code"
-  build_timeout = 20
-  service_role  = aws_iam_role.codebuild_role.arn
+  name           = "${var.project_name}-checkov"
+  description    = "Runs Checkov static security analysis on Terraform code"
+  build_timeout  = 20
+  service_role   = aws_iam_role.codebuild_role.arn
+  encryption_key = aws_kms_key.cicd.arn
 
   artifacts {
     type = "CODEPIPELINE"
@@ -91,10 +93,11 @@ resource "aws_codebuild_project" "checkov" {
 # ── CodeBuild: TFLint ─────────────────────────────────────────
 
 resource "aws_codebuild_project" "tflint" {
-  name          = "${var.project_name}-tflint"
-  description   = "Runs TFLint static analysis on Terraform code"
-  build_timeout = 20
-  service_role  = aws_iam_role.codebuild_role.arn
+  name           = "${var.project_name}-tflint"
+  description    = "Runs TFLint static analysis on Terraform code"
+  build_timeout  = 20
+  service_role   = aws_iam_role.codebuild_role.arn
+  encryption_key = aws_kms_key.cicd.arn
 
   artifacts {
     type = "CODEPIPELINE"
@@ -123,10 +126,11 @@ resource "aws_codebuild_project" "tflint" {
 # ── CodeBuild: Terraform Apply ─────────────────────────────────
 
 resource "aws_codebuild_project" "tf_apply" {
-  name          = "${var.project_name}-tf-apply"
-  description   = "Runs terraform apply to provision AWS resources"
-  build_timeout = 60
-  service_role  = aws_iam_role.codebuild_role.arn
+  name           = "${var.project_name}-tf-apply"
+  description    = "Runs terraform apply to provision AWS resources"
+  build_timeout  = 60
+  service_role   = aws_iam_role.codebuild_role.arn
+  encryption_key = aws_kms_key.cicd.arn
 
   artifacts {
     type = "CODEPIPELINE"

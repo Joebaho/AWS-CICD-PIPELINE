@@ -114,3 +114,7 @@ output "artifacts_bucket_name" {
 output "state_bucket_name" {
   value = module.cicd_pipeline.state_bucket_name
 }
+
+output "kms_key_arn" {
+  value = module.cicd_pipeline.kms_key_arn
+}

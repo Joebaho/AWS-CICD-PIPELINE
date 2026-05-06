@@ -8,6 +8,10 @@ resource "aws_codepipeline" "module_validation" {
   artifact_store {
     location = aws_s3_bucket.codepipeline_artifacts.bucket
     type     = "S3"
+    encryption_key {
+      id   = aws_kms_key.cicd.arn
+      type = "KMS"
+    }
   }
 
   stage {
@@ -95,6 +99,10 @@ resource "aws_codepipeline" "deployment" {
   artifact_store {
     location = aws_s3_bucket.codepipeline_artifacts.bucket
     type     = "S3"
+    encryption_key {
+      id   = aws_kms_key.cicd.arn
+      type = "KMS"
+    }
   }
 
   stage {

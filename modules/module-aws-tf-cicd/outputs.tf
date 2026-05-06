@@ -13,6 +13,11 @@ output "dynamodb_table_name" {
   value       = aws_dynamodb_table.tf_state_lock.name
 }
 
+output "kms_key_arn" {
+  description = "KMS key ARN used by CI/CD resources"
+  value       = aws_kms_key.cicd.arn
+}
+
 output "module_validation_pipeline_name" {
   description = "Name of the module validation CodePipeline"
   value       = aws_codepipeline.module_validation.name

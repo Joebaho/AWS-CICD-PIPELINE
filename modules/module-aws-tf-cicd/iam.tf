@@ -32,6 +32,14 @@ resource "aws_iam_role_policy" "codepipeline_policy" {
         ]
       },
       {
+        Effect = "Allow"
+        Action = [
+          "kms:Decrypt", "kms:DescribeKey", "kms:Encrypt",
+          "kms:GenerateDataKey", "kms:ReEncrypt*"
+        ]
+        Resource = aws_kms_key.cicd.arn
+      },
+      {
         Effect   = "Allow"
         Action   = ["codebuild:BatchGetBuilds", "codebuild:StartBuild"]
         Resource = "*"
@@ -91,6 +99,14 @@ resource "aws_iam_role_policy" "codebuild_policy" {
         Effect   = "Allow"
         Action   = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:DeleteItem"]
         Resource = aws_dynamodb_table.tf_state_lock.arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "kms:Decrypt", "kms:DescribeKey", "kms:Encrypt",
+          "kms:GenerateDataKey", "kms:ReEncrypt*"
+        ]
+        Resource = aws_kms_key.cicd.arn
       },
       {
         # Terraform needs broad permissions to provision resources
