@@ -1,12 +1,19 @@
 # AWS Terraform CI/CD Pipeline
 
-This project builds an AWS CI/CD system for Terraform using CodePipeline, CodeBuild, S3, DynamoDB, IAM, and GitHub CodeStar Connections.
+This project provisions an AWS CI/CD system for Terraform using GitHub, CodeStar Connections, CodePipeline, CodeBuild, S3, DynamoDB, IAM, KMS, Checkov, and TFLint.
 
-The repository contains three main parts:
+The project is configured for `us-west-2` and uses an existing Terraform backend:
 
-- `aws-devops-core/`: verifies the existing S3 bucket and DynamoDB table used for Terraform remote state.
-- `modules/module-aws-tf-cicd/`: reusable Terraform code that creates the CI/CD pipelines and supporting AWS resources.
-- `example-production-workload/`: example root configuration that calls the reusable CI/CD module.
+- S3 bucket: `baho-backup-bucket`
+- State key prefix: `Codepipeline-backup/`
+- DynamoDB lock table: `full-devops-table`
+
+In Terraform backend syntax, `baho-backup-bucket/Codepipeline-backup` is split into:
+
+```hcl
+bucket = "baho-backup-bucket"
+key    = "Codepipeline-backup/<state-file>.tfstate"
+```
 
 ## Architecture
 
@@ -28,7 +35,7 @@ CodePipeline
 S3 remote state + DynamoDB locking
 ```
 
-The module creates two pipelines:
+The reusable module creates two pipelines:
 
 1. Module validation pipeline: validates the Terraform module repository.
 2. Deployment pipeline: validates and applies the workload repository.
@@ -39,107 +46,97 @@ The module creates two pipelines:
 AWS-CICD-PIPELINE/
 ├── README.md
 ├── aws-devops-core/
-│   └── main.tf
-├── example-production-workload/
-│   └── main.tf
+│   ├── main.tf              # Reads existing backend resources
+│   ├── outputs.tf
+│   ├── providers.tf
+│   └── variables.tf
 ├── pipeline-deployment/
-│   └── main.tf
+│   ├── main.tf              # Deploys the reusable CI/CD module
+│   ├── outputs.tf
+│   ├── providers.tf         # S3 backend for pipeline state
+│   └── variables.tf
+├── example-production-workload/
+│   ├── main.tf              # Example root module using the CI/CD module
+│   ├── outputs.tf
+│   ├── providers.tf         # S3 backend for example workload state
+│   └── variables.tf
 └── modules/
     └── module-aws-tf-cicd/
-        ├── codebuild.tf
-        ├── codepipeline.tf
-        ├── data.tf
-        ├── iam.tf
-        ├── outputs.tf
-        ├── s3.tf
-        ├── variables.tf
-        ├── versions.tf
         ├── buildspec/
         │   ├── checkov-buildspec.yml
         │   ├── tf-apply-buildspec.yml
         │   ├── tf-test-buildspec.yml
         │   └── tflint-buildspec.yml
-        └── tests/
-            └── main.tftest.hcl
+        ├── tests/
+        │   └── main.tftest.hcl
+        ├── codebuild.tf
+        ├── codepipeline.tf
+        ├── data.tf
+        ├── iam.tf
+        ├── kms.tf
+        ├── outputs.tf
+        ├── s3.tf
+        ├── variables.tf
+        └── versions.tf
 ```
+
+## What Gets Created
+
+Deploying `pipeline-deployment/` creates:
+
+- Two CodePipeline pipelines
+- Four CodeBuild projects:
+  - Terraform test
+  - Checkov scan
+  - TFLint scan
+  - Terraform apply
+- CodePipeline artifact S3 bucket
+- Terraform state S3 bucket for pipeline-managed workloads
+- DynamoDB lock table for pipeline-managed state
+- Customer-managed KMS key and alias
+- IAM roles and inline policies for CodePipeline and CodeBuild
+
+The existing backend bucket `baho-backup-bucket` and table `full-devops-table` are not recreated. They are used to store and lock Terraform state.
 
 ## Prerequisites
 
-Install and configure these before running the project:
+Install and configure:
 
 - Terraform `>= 1.6`
 - AWS CLI
-- An AWS account with permission to create S3, DynamoDB, IAM, CodeBuild, CodePipeline, and CodeStar/CodeConnections resources
-- A configured AWS CLI profile or environment variables
+- Checkov
+- TFLint
 - GitHub repositories for the module and workload code
-- A GitHub CodeStar Connection created in AWS
+- A GitHub CodeStar Connection in `us-west-2`
+- AWS permissions to create CodePipeline, CodeBuild, S3, DynamoDB, IAM, KMS, and CodeStar/CodeConnections resources
 
-Verify your local tools:
+Verify your local environment:
 
 ```bash
 terraform version
 aws sts get-caller-identity
 ```
 
-## Important Values To Change
+## Step 1: Confirm The Existing Backend
 
-This project is configured for your existing backend in `us-west-2`:
-
-- S3 bucket: `baho-backup-bucket`
-- Backend key prefix: `Codepipeline-backup/`
-- DynamoDB lock table: `full-devops-table`
-
-You originally shared the backend as `baho-backup-bucket/Codepipeline-backup`. In Terraform backend syntax, that is split into `bucket = "baho-backup-bucket"` and `key = "Codepipeline-backup/<state-file-name>.tfstate"`.
-
-Before deploying, review these values and replace only the ones that differ from your AWS account and GitHub repositories:
-
-- `pipeline-deployment/main.tf`
-  - S3 backend `bucket`
-  - S3 backend `key`
-  - backend `region`
-  - backend `dynamodb_table`
-- `example-production-workload/main.tf`
-  - S3 backend `bucket`
-  - S3 backend `key`
-  - backend `region`
-  - backend `dynamodb_table`
-  - `github_repo_module`
-  - `github_repo_workload`
-  - `artifacts_bucket_name`
-  - `state_bucket_name`
-  - `dynamodb_table_name`
-
-S3 bucket names are global across all AWS accounts. If a bucket name is already taken, choose a unique name.
-The backend lock table and the pipeline-created lock table should stay different. This README uses your existing `full-devops-table` for Terraform backend locking and `baho-pipeline-state-lock` for pipeline-managed Terraform state locking.
-
-## Step 1: Create A GitHub CodeStar Connection
-
-This step is manual in the AWS Console.
-
-1. Open AWS Console.
-2. Go to CodePipeline.
-3. Open Settings, then Connections.
-4. Create a new GitHub connection.
-5. Authorize the GitHub app.
-6. Allow access to the module and workload repositories.
-7. Copy the connection ARN.
-
-The ARN looks similar to this:
-
-```text
-arn:aws:codestar-connections:us-west-2:123456789012:connection/abc123
-```
-
-## Step 2: Confirm Terraform Remote State
-
-You already have the backend resources, so this project is configured to use them. Confirm they exist with AWS CLI:
+From the project root:
 
 ```bash
-aws s3api head-bucket --bucket baho-backup-bucket --region us-west-2
-aws dynamodb describe-table --table-name full-devops-table --region us-west-2
+aws s3api head-bucket \
+  --bucket baho-backup-bucket \
+  --region us-west-2
+
+aws dynamodb describe-table \
+  --table-name full-devops-table \
+  --region us-west-2
 ```
 
-You can also verify them through the `aws-devops-core` Terraform root:
+Expected result:
+
+- The S3 command returns no error.
+- The DynamoDB command returns details for `full-devops-table`.
+
+You can also verify the backend with Terraform:
 
 ```bash
 cd aws-devops-core
@@ -147,11 +144,41 @@ terraform init
 terraform plan
 ```
 
-## Step 3: Update Backend Configuration
+Expected result: Terraform reads the existing bucket and table through data sources.
 
-`pipeline-deployment/main.tf` is already configured with your backend.
+## Step 2: Create Or Confirm The CodeStar Connection
 
-Example:
+In the AWS Console:
+
+1. Open CodePipeline.
+2. Go to Settings.
+3. Open Connections.
+4. Create or select a GitHub connection.
+5. Make sure it is in `us-west-2`.
+6. Authorize access to your GitHub repositories.
+7. Copy the connection ARN.
+
+Example ARN:
+
+```text
+arn:aws:codestar-connections:us-west-2:123456789012:connection/abc123
+```
+
+## Step 3: Review Deployment Variables
+
+Open `pipeline-deployment/variables.tf` and confirm these values:
+
+- `aws_region`: defaults to `us-west-2`
+- `github_repo_module`: defaults to `Joebaho/module-aws-tf-cicd`
+- `github_repo_workload`: defaults to `Joebaho/example-prod-workload`
+- `github_branch`: defaults to `main`
+- `artifacts_bucket_name`: defaults to `baho-codepipeline-artifacts`
+- `state_bucket_name`: defaults to `baho-pipeline-tf-state`
+- `dynamodb_table_name`: defaults to `baho-pipeline-state-lock`
+
+Change the GitHub repository values if your real repositories have different names.
+
+The deployment backend is in `pipeline-deployment/providers.tf`:
 
 ```hcl
 backend "s3" {
@@ -163,11 +190,9 @@ backend "s3" {
 }
 ```
 
-`example-production-workload/main.tf` is also already configured to use the same backend bucket/table with its own state key.
+## Step 4: Deploy The CI/CD Pipelines
 
-## Step 4: Deploy The CI/CD Module
-
-From the pipeline deployment root:
+From the project root:
 
 ```bash
 cd pipeline-deployment
@@ -175,85 +200,111 @@ terraform init
 terraform validate
 terraform plan \
   -var="codestar_connection_arn=YOUR_CODESTAR_CONNECTION_ARN"
+```
+
+If the plan looks correct:
+
+```bash
 terraform apply \
   -var="codestar_connection_arn=YOUR_CODESTAR_CONNECTION_ARN"
 ```
 
-Terraform will create:
+Expected result:
 
-- CodePipeline artifact bucket
-- Terraform state bucket
-- DynamoDB state lock table
-- IAM roles and policies
-- CodeBuild projects
-- CodePipeline pipelines
+- Terraform creates the CI/CD pipelines and supporting AWS resources.
+- Terraform state is stored at:
+  - `s3://baho-backup-bucket/Codepipeline-backup/module-aws-tf-cicd/terraform.tfstate`
+- State locking uses:
+  - `full-devops-table`
 
-## Step 5: Run Local Terraform Checks
+Check outputs:
 
-Format check:
+```bash
+terraform output
+```
+
+Expected outputs include:
+
+- `module_validation_pipeline_name`
+- `deployment_pipeline_name`
+- `artifacts_bucket_name`
+- `state_bucket_name`
+- `kms_key_arn`
+
+## Step 5: Run Local Quality Checks
+
+From the project root:
 
 ```bash
 terraform fmt -recursive
 ```
 
-Validate the backend verification root:
-
-```bash
-cd aws-devops-core
-terraform init -backend=false
-terraform validate
-```
-
-Validate the CI/CD module:
+Validate the reusable module:
 
 ```bash
 cd modules/module-aws-tf-cicd
 terraform init -backend=false
 terraform validate
-```
-
-Run Terraform tests:
-
-```bash
-cd modules/module-aws-tf-cicd
 terraform test -verbose
 ```
 
-The included tests use `plan`, so they validate structure without applying AWS resources.
-
-## Step 6: Run Checkov Locally
-
-Install Checkov if needed:
+Run Checkov:
 
 ```bash
-pip3 install checkov
-```
-
-Run the scan:
-
-```bash
-cd modules/module-aws-tf-cicd
 checkov --directory . --framework terraform
 ```
 
-## Step 7: Run TFLint Locally
+Expected result after the latest hardening:
 
-Install TFLint if needed:
-
-```bash
-brew install tflint
+```text
+Failed checks: 0
 ```
 
-Run linting:
+Some checks may show as skipped because this single-region lab intentionally does not enable S3 access logging, S3 event notifications, or cross-region replication.
+
+Run TFLint:
 
 ```bash
-cd modules/module-aws-tf-cicd
 tflint --recursive
 ```
 
-## Step 8: Deploy The Example Workload
+Expected result:
 
-The example root configuration calls the reusable module with production-style values.
+```text
+0 issues
+```
+
+## Step 6: Trigger The Pipelines
+
+After `pipeline-deployment` is applied, push code to the configured GitHub branch:
+
+```text
+main
+```
+
+Expected result:
+
+- CodePipeline starts automatically from the CodeStar source action.
+- The module validation pipeline runs Terraform test, Checkov, and TFLint.
+- The deployment pipeline runs Terraform test, Checkov, TFLint, and Terraform apply.
+
+## Optional: Deploy The Example Workload
+
+The `example-production-workload/` root module also calls the reusable CI/CD module. Use it only if you intentionally want another CI/CD stack with production-style names.
+
+Its backend is configured in `example-production-workload/providers.tf`:
+
+```hcl
+backend "s3" {
+  bucket         = "baho-backup-bucket"
+  key            = "Codepipeline-backup/example-prod-workload/terraform.tfstate"
+  region         = "us-west-2"
+  dynamodb_table = "full-devops-table"
+  encrypt        = true
+}
+```
+
+Run:
 
 ```bash
 cd example-production-workload
@@ -265,45 +316,33 @@ terraform apply \
   -var="codestar_connection_arn=YOUR_CODESTAR_CONNECTION_ARN"
 ```
 
-## Pipeline Behavior
-
-After deployment, pushes to the configured GitHub branch can trigger the pipelines through the CodeStar/CodeConnections source action.
-
-Current defaults:
-
-- Branch: `main`
-- Module repo: `Joebaho/module-aws-tf-cicd`
-- Workload repo: `Joebaho/example-prod-workload`
-- Region: `us-west-2`
-
-Change these before running if your repositories or region are different.
-
-## Readiness Notes
-
-This project has the main files needed for a Terraform-based AWS CI/CD pipeline. The Terraform files are formatted, and the structure matches the intended project.
-
-Before running in AWS, review these items:
-
-- Confirm that all S3 bucket names are unique in AWS.
-- Confirm the GitHub repository names are correct.
-- Confirm the CodeStar Connection ARN is active.
-- Decide whether `example-production-workload/` should create a second copy of the CI/CD pipeline or whether it is only an example.
-- Review IAM permissions in `modules/module-aws-tf-cicd/iam.tf`; the CodeBuild role currently has broad permissions so Terraform can provision infrastructure.
-- The PDF lists manual approval and SNS notifications as optional next steps; those are not implemented yet.
+Expected result: Terraform deploys a second CI/CD stack using the same reusable module.
 
 ## Cleanup
 
-To destroy resources created by this project, destroy in reverse order:
+Destroy resources in reverse order.
+
+If you deployed the optional example workload:
 
 ```bash
 cd example-production-workload
-terraform destroy -var="codestar_connection_arn=YOUR_CODESTAR_CONNECTION_ARN"
-
-cd ../pipeline-deployment
-terraform destroy -var="codestar_connection_arn=YOUR_CODESTAR_CONNECTION_ARN"
-
-cd ../aws-devops-core
-terraform destroy
+terraform destroy \
+  -var="codestar_connection_arn=YOUR_CODESTAR_CONNECTION_ARN"
 ```
 
-If S3 buckets contain objects or versions, Terraform may not be able to delete them until the bucket contents are removed.
+Destroy the main pipeline deployment:
+
+```bash
+cd ../pipeline-deployment
+terraform destroy \
+  -var="codestar_connection_arn=YOUR_CODESTAR_CONNECTION_ARN"
+```
+
+Do not destroy `aws-devops-core` unless you intentionally want to remove or stop using the existing backend resources. In this refactor, `aws-devops-core` only reads the existing backend resources.
+
+## Notes
+
+- The CodeBuild role intentionally has broad permissions because the pipeline runs Terraform apply.
+- The backend lock table `full-devops-table` is separate from the pipeline-managed lock table `baho-pipeline-state-lock`.
+- The module uses a customer-managed KMS key for CodeBuild, CodePipeline artifacts, S3 bucket encryption, and DynamoDB encryption.
+- Manual approval and SNS notifications are optional future enhancements.
