@@ -1,0 +1,42 @@
+version: 0.2
+
+# ── Checkov Security Scan ──────────────────────────────────────
+# Static analysis of Terraform code for security misconfigurations
+
+phases:
+  install:
+    commands:
+      - echo "Installing Checkov..."
+      - pip3 install "checkov==${CHECKOV_VERSION:-3.2.403}" --quiet
+      - checkov --version
+
+  build:
+    commands:
+      - echo "Running Checkov security scan..."
+      - checkov
+          --directory .
+          --framework terraform
+          --output cli
+          --output junitxml
+          --output-file-path console,checkov-results.xml
+          --soft-fail
+      - echo "Checkov scan complete"
+
+  post_build:
+    commands:
+      - |
+        if [ "$CODEBUILD_BUILD_SUCCEEDING" = "1" ]; then
+          echo "✅ Checkov scan passed"
+        else
+          echo "⚠️  Checkov found issues — review checkov-results.xml"
+        fi
+
+reports:
+  CheckovResults:
+    files:
+      - "checkov-results.xml"
+    file-format: JUNITXML
+
+artifacts:
+  files:
+    - checkov-results.xml

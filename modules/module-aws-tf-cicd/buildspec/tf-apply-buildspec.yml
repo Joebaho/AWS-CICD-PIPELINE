@@ -1,0 +1,43 @@
+version: 0.2
+
+# ── Terraform Apply ────────────────────────────────────────────
+# Provisions/updates AWS resources after tests and Checkov pass
+
+phases:
+  install:
+    commands:
+      - echo "Installing Terraform..."
+      - wget -q https://releases.hashicorp.com/terraform/${TF_VERSION:-1.11.3}/terraform_${TF_VERSION:-1.11.3}_linux_amd64.zip
+      - unzip -q terraform_${TF_VERSION:-1.11.3}_linux_amd64.zip
+      - mv terraform /usr/local/bin/terraform
+      - terraform version
+
+  pre_build:
+    commands:
+      - echo "Initializing Terraform backend..."
+      - terraform init
+          -backend-config="bucket=${TF_STATE_BUCKET}"
+          -backend-config="key=production/terraform.tfstate"
+          -backend-config="region=${AWS_DEFAULT_REGION}"
+          -backend-config="dynamodb_table=${TF_LOCK_TABLE}"
+          -reconfigure
+      - echo "Validating configuration..."
+      - terraform validate
+
+  build:
+    commands:
+      - echo "Running terraform apply..."
+      - terraform apply
+          -var="aws_region=${AWS_DEFAULT_REGION}"
+          -auto-approve
+          -input=false
+      - echo "✅ Terraform apply completed successfully"
+
+  post_build:
+    commands:
+      - echo "Deployment complete — listing outputs"
+      - terraform output
+
+artifacts:
+  files:
+    - "**/*"

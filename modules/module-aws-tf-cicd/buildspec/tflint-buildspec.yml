@@ -1,0 +1,23 @@
+version: 0.2
+
+# TFLint static analysis for Terraform code.
+
+phases:
+  install:
+    commands:
+      - echo "Installing TFLint..."
+      - curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+      - tflint --version
+
+  build:
+    commands:
+      - echo "Running TFLint..."
+      - tflint --recursive --format compact
+
+  post_build:
+    commands:
+      - echo "TFLint completed"
+
+artifacts:
+  files:
+    - "**/*"
