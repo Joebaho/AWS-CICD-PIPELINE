@@ -1,28 +1,3 @@
-terraform {
-  required_version = ">= 1.6.0"
-
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-  }
-
-  backend "s3" {
-    bucket         = "baho-backup-bucket"
-    key            = "Codepipeline-backup/example-prod-workload/terraform.tfstate"
-    region         = "us-west-2"
-    dynamodb_table = "full-devops-table"
-    encrypt        = true
-  }
-}
-
-provider "aws" {
-  region = "us-west-2"
-}
-
-# ── Call the reusable CICD module ──────────────────────────────
-
 module "cicd_pipeline" {
   source = "../modules/module-aws-tf-cicd"
 
@@ -42,15 +17,4 @@ module "cicd_pipeline" {
   dynamodb_table_name   = "baho-prod-state-lock"
 }
 
-variable "codestar_connection_arn" {
-  description = "CodeStar Connection ARN for GitHub integration"
-  type        = string
-}
 
-output "deployment_pipeline_name" {
-  value = module.cicd_pipeline.deployment_pipeline_name
-}
-
-output "state_bucket" {
-  value = module.cicd_pipeline.state_bucket_name
-}
