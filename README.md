@@ -346,3 +346,34 @@ Do not destroy `aws-devops-core` unless you intentionally want to remove or stop
 - The backend lock table `full-devops-table` is separate from the pipeline-managed lock table `baho-pipeline-state-lock`.
 - The module uses a customer-managed KMS key for CodeBuild, CodePipeline artifacts, S3 bucket encryption, and DynamoDB encryption.
 - Manual approval and SNS notifications are optional future enhancements.
+
+## 🤝 Contribution
+
+Pull requests are welcome. For major changes, please open an issue first.
+
+## 👨‍💻 Author
+
+**Joseph Mbatchou**
+
+• DevOps / Cloud / Platform  Engineer   
+• Content Creator / AWS Builder
+
+## 🔗 Connect With Me
+
+🌐 Website: [https://platform.joebahocloud.com](https://platform.joebahocloud.com)
+
+💼 LinkedIn: [https://www.linkedin.com/in/josephmbatchou/](https://www.linkedin.com/in/josephmbatchou/)
+
+🐦 X/Twitter: [https://www.twitter.com/Joebaho237](https://www.twitter.com/Joebaho237)
+
+▶️ YouTube: [https://www.youtube.com/@josephmbatchou5596](https://www.youtube.com/@josephmbatchou5596)
+
+🔗 Github: [https://github.com/Joebaho](https://github.com/Joebaho)
+
+📦 Dockerhub: [https://hub.docker.com/u/joebaho2](https://hub.docker.com/u/joebaho2)
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License — see the LICENSE file for details.
