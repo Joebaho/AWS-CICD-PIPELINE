@@ -230,7 +230,7 @@ Expected outputs include:
 - `state_bucket_name`
 - `kms_key_arn`
 
-![CI/CD Pipeline](./images/cicd.png)
+![CI/CD Pipeline](./images/cicd1.png)
 
 
 ## Step 5: Run Local Quality Checks
