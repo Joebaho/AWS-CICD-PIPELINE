@@ -13,7 +13,7 @@ variable "environment" {
 variable "project_name" {
   description = "Project name used for resource naming"
   type        = string
-  default     = "module-aws-tf-cicd"
+  default     = "aws-cicd-pipeline"
 }
 
 variable "codestar_connection_arn" {
@@ -24,13 +24,13 @@ variable "codestar_connection_arn" {
 variable "github_repo_module" {
   description = "GitHub repo ID for the Terraform module, formatted as owner/repo"
   type        = string
-  default     = "Joebaho/module-aws-tf-cicd"
+  default     = "Joebaho/AWS-CICD-PIPELINE"
 }
 
 variable "github_repo_workload" {
   description = "GitHub repo ID for the workload, formatted as owner/repo"
   type        = string
-  default     = "Joebaho/example-prod-workload"
+  default     = "Joebaho/AWS-CICD-PIPELINE"
 }
 
 variable "github_branch" {
