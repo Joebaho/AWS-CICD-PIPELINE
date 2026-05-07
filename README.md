@@ -6,7 +6,7 @@ The project is configured for `us-west-2` and uses an existing Terraform backend
 
 - S3 bucket: `baho-backup-bucket`
 - State key prefix: `Codepipeline-backup/`
-- DynamoDB lock table: `full-devops-table`
+- Backend locking: S3 native lockfile
 
 In Terraform backend syntax, `baho-backup-bucket/Codepipeline-backup` is split into:
 
@@ -46,7 +46,7 @@ The reusable module creates two pipelines:
 AWS-CICD-PIPELINE/
 ├── README.md
 ├── aws-devops-core/
-│   ├── main.tf              # Reads existing backend resources
+│   ├── main.tf              # Reads the existing backend bucket
 │   ├── outputs.tf
 │   ├── providers.tf
 │   └── variables.tf
@@ -96,7 +96,7 @@ Deploying `pipeline-deployment/` creates:
 - Customer-managed KMS key and alias
 - IAM roles and inline policies for CodePipeline and CodeBuild
 
-The existing backend bucket `baho-backup-bucket` and table `full-devops-table` are not recreated. They are used to store and lock Terraform state.
+The existing backend bucket `baho-backup-bucket` is not recreated. Terraform state is stored in that bucket and protected with S3 native lockfiles.
 
 ## Prerequisites
 
@@ -126,15 +126,9 @@ aws s3api head-bucket \
   --bucket baho-backup-bucket \
   --region us-west-2
 
-aws dynamodb describe-table \
-  --table-name full-devops-table \
-  --region us-west-2
 ```
 
-Expected result:
-
-- The S3 command returns no error.
-- The DynamoDB command returns details for `full-devops-table`.
+Expected result: the S3 command returns no error.
 
 You can also verify the backend with Terraform:
 
@@ -182,11 +176,11 @@ The deployment backend is in `pipeline-deployment/providers.tf`:
 
 ```hcl
 backend "s3" {
-  bucket         = "baho-backup-bucket"
-  key            = "Codepipeline-backup/module-aws-tf-cicd/terraform.tfstate"
-  region         = "us-west-2"
-  dynamodb_table = "full-devops-table"
-  encrypt        = true
+  bucket       = "baho-backup-bucket"
+  key          = "Codepipeline-backup/module-aws-tf-cicd/terraform.tfstate"
+  region       = "us-west-2"
+  encrypt      = true
+  use_lockfile = true
 }
 ```
 
@@ -215,7 +209,7 @@ Expected result:
 - Terraform state is stored at:
   - `s3://baho-backup-bucket/Codepipeline-backup/module-aws-tf-cicd/terraform.tfstate`
 - State locking uses:
-  - `full-devops-table`
+  - `s3://baho-backup-bucket/Codepipeline-backup/module-aws-tf-cicd/terraform.tfstate.tflock`
 
 Check outputs:
 
@@ -296,11 +290,11 @@ Its backend is configured in `example-production-workload/providers.tf`:
 
 ```hcl
 backend "s3" {
-  bucket         = "baho-backup-bucket"
-  key            = "Codepipeline-backup/example-prod-workload/terraform.tfstate"
-  region         = "us-west-2"
-  dynamodb_table = "full-devops-table"
-  encrypt        = true
+  bucket       = "baho-backup-bucket"
+  key          = "Codepipeline-backup/example-prod-workload/terraform.tfstate"
+  region       = "us-west-2"
+  encrypt      = true
+  use_lockfile = true
 }
 ```
 
@@ -343,7 +337,7 @@ Do not destroy `aws-devops-core` unless you intentionally want to remove or stop
 ## Notes
 
 - The CodeBuild role intentionally has broad permissions because the pipeline runs Terraform apply.
-- The backend lock table `full-devops-table` is separate from the pipeline-managed lock table `baho-pipeline-state-lock`.
+- The backend uses S3 native lockfiles. The pipeline-managed Terraform state table is separate and defaults to `baho-pipeline-state-lock`.
 - The module uses a customer-managed KMS key for CodeBuild, CodePipeline artifacts, S3 bucket encryption, and DynamoDB encryption.
 - Manual approval and SNS notifications are optional future enhancements.
 

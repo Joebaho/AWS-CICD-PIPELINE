@@ -9,11 +9,11 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "baho-backup-bucket"
-    key            = "Codepipeline-backup/example-prod-workload/terraform.tfstate"
-    region         = "us-west-2"
-    dynamodb_table = "full-devops-table"
-    encrypt        = true
+    bucket       = "baho-backup-bucket"
+    key          = "Codepipeline-backup/example-prod-workload/terraform.tfstate"
+    region       = "us-west-2"
+    encrypt      = true
+    use_lockfile = true
   }
 }
 

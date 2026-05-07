@@ -17,9 +17,3 @@ variable "state_key_prefix" {
   type        = string
   default     = "Codepipeline-backup"
 }
-
-variable "dynamodb_table_name" {
-  description = "Existing DynamoDB table used for Terraform state locking"
-  type        = string
-  default     = "full-devops-table"
-}
