@@ -40,6 +40,8 @@ The reusable module creates two pipelines:
 1. Module validation pipeline: validates the Terraform module repository.
 2. Deployment pipeline: validates and applies the workload repository.
 
+![Architecture](./images/architecture.png)
+
 ## Project Structure
 
 ```text
@@ -158,6 +160,9 @@ Example ARN:
 arn:aws:codestar-connections:us-west-2:123456789012:connection/abc123
 ```
 
+![Connection](./images/connection.png)
+
+
 ## Step 3: Review Deployment Variables
 
 Open `pipeline-deployment/variables.tf` and confirm these values:
@@ -225,6 +230,9 @@ Expected outputs include:
 - `state_bucket_name`
 - `kms_key_arn`
 
+![CI/CD Pipeline](./images/cicd.png)
+
+
 ## Step 5: Run Local Quality Checks
 
 From the project root:
@@ -254,6 +262,8 @@ Expected result after the latest hardening:
 Failed checks: 0
 ```
 
+![Checkov](./images/checkov.png)
+
 Some checks may show as skipped because this single-region lab intentionally does not enable S3 access logging, S3 event notifications, or cross-region replication.
 
 Run TFLint:
@@ -267,6 +277,9 @@ Expected result:
 ```text
 0 issues
 ```
+
+![tflint](./images/tflint.png)
+
 
 ## Step 6: Trigger The Pipelines
 
@@ -333,6 +346,8 @@ terraform destroy \
 ```
 
 Do not destroy `aws-devops-core` unless you intentionally want to remove or stop using the existing backend resources. In this refactor, `aws-devops-core` only reads the existing backend resources.
+
+![Destroy](./images/destroy.png)
 
 ## Notes
 
